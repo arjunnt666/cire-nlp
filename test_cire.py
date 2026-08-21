@@ -1,0 +1,27 @@
+import unittest
+
+import cire_engine as cire
+
+
+class CireTests(unittest.TestCase):
+    def test_normalize(self):
+        self.assertEqual(cire.normalize("  What's UP?? "), "what is up")
+
+    def test_meta_help(self):
+        self.assertEqual(cire.detect_meta_intent("help"), "help")
+
+    def test_topic_a(self):
+        self.assertEqual(cire.detect_topic("topic a"), "domain_a")
+
+    def test_resolve_rules(self):
+        result = cire.resolve("rules for subject b")
+        self.assertEqual(result["topic"], "domain_b")
+        self.assertEqual(result["intent"], "rules")
+        self.assertFalse(result["end_session"])
+
+    def test_schema_ok(self):
+        self.assertEqual(cire.CIREDiagnostics.validate_schema(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
