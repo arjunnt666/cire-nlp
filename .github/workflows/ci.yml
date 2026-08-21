@@ -18,4 +18,6 @@ jobs:
       - name: tests
         run: python -m unittest test_cire.py -v
       - name: smoke
-        run: python cire_engine.py
+        run: python cire_engine.py --smoke
+      - name: argv
+        run: python cire_engine.py "rules for topic b"

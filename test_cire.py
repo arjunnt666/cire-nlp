@@ -1,4 +1,7 @@
+import io
+import json
 import unittest
+from unittest import mock
 
 import cire_engine as cire
 
@@ -21,6 +24,23 @@ class CireTests(unittest.TestCase):
 
     def test_schema_ok(self):
         self.assertEqual(cire.CIREDiagnostics.validate_schema(), [])
+
+    def test_topic_is_not_ranking(self):
+        self.assertEqual(cire.detect_intent("topic a"), "info")
+        self.assertEqual(cire.detect_intent("rules for topic b"), "rules")
+        self.assertEqual(cire.detect_intent("top picks for topic a"), "ranking")
+        result = cire.resolve("topic a")
+        self.assertEqual(result["topic"], "domain_a")
+        self.assertEqual(result["intent"], "info")
+
+    def test_cli_argv(self):
+        buf = io.StringIO()
+        with mock.patch("sys.stdout", buf):
+            code = cire.main(["rules for topic b"])
+        self.assertEqual(code, 0)
+        data = json.loads(buf.getvalue())
+        self.assertEqual(data["topic"], "domain_b")
+        self.assertEqual(data["intent"], "rules")
 
 
 if __name__ == "__main__":

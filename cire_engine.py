@@ -14,6 +14,7 @@ import logging
 import hashlib
 import time
 import sys
+import json
 from difflib import SequenceMatcher
 from functools import lru_cache
 from collections import defaultdict, Counter
@@ -204,6 +205,13 @@ def normalize(text: str) -> str:
     return text
 
 
+def _bounded(haystack: str, needle: str) -> bool:
+    """True if needle appears as a whole word/phrase in haystack."""
+    if not needle:
+        return False
+    return re.search(r"\b" + re.escape(needle) + r"\b", haystack) is not None
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  LAYER 0 — META INTENT RESOLVER (MIR)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -255,9 +263,9 @@ def detect_meta_intent(text: str) -> Optional[str]:
     if text in _MIR_EXACT:
         return _MIR_EXACT[text]
 
-    # Substring scan for multi-word triggers
+    # Phrase scan with word boundaries so "tip" does not fire inside "topic"
     for phrase, intent in _MIR_EXACT.items():
-        if phrase in text:
+        if _bounded(text, phrase):
             return intent
 
     return None
@@ -285,8 +293,10 @@ def fuzzy_match(word: str, keyword: str, threshold: float = FSM_THRESHOLD) -> bo
     FSM — Fuzzy Surface Matching.
     Word-level edit-distance check with configurable threshold.
     """
-    if keyword in word:
+    if word == keyword:
         return True
+    if len(word) < FSM_MIN_WORD_LENGTH or len(keyword) < FSM_MIN_WORD_LENGTH:
+        return False
     return _fuzzy_pair(word, keyword) >= threshold
 
 
@@ -298,7 +308,7 @@ def _score_domain(text_norm: str, words: list[str], data: dict) -> int:
 
     for kw in keywords:
         kw_norm = normalize(kw)
-        if kw_norm in text_norm:
+        if _bounded(text_norm, kw_norm):
             score += _WEIGHT_EXACT_KEYWORD
             continue
         if kw_norm and words[0][:len(kw_norm)] == kw_norm[:len(words[0])]:
@@ -311,7 +321,7 @@ def _score_domain(text_norm: str, words: list[str], data: dict) -> int:
 
     for syn in synonyms:
         syn_norm = normalize(syn)
-        if syn_norm in text_norm:
+        if _bounded(text_norm, syn_norm):
             score += _WEIGHT_EXACT_SYNONYM
             continue
         for word in words:
@@ -378,7 +388,7 @@ def detect_intent(text: str) -> str:
     for intent in reversed(INTENT_PRIORITY):   # higher priority checked last, wins
         triggers = _INTENT_TRIGGERS.get(intent, [])
         for trigger in triggers:
-            if trigger in text_norm:
+            if _bounded(text_norm, trigger):
                 return intent
 
     return "info"
@@ -756,10 +766,10 @@ def resolve(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  ENTRY POINT — quick smoke test
+#  ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
-if __name__ == "__main__":
+def run_smoke() -> None:
     print(f"CIRE v{CIRE_VERSION} ({CIRE_BUILD}) — smoke test")
     print("-" * 60)
 
@@ -769,7 +779,7 @@ if __name__ == "__main__":
         for w in warnings:
             print(f"  ⚠ {w}")
     else:
-        print("  ✅ Schema validation passed")
+        print("  Schema validation passed")
 
     test_phrases = [
         "what can you do",
@@ -788,3 +798,21 @@ if __name__ == "__main__":
         print(f"    meta={result['meta']} topic={result['topic']} intent={result['intent']}")
         print(f"    → {result['response'][:80]}...")
         print()
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args or args == ["--smoke"]:
+        run_smoke()
+        return 0
+    if args[0] in ("-h", "--help"):
+        print("usage: python cire_engine.py [utterance]")
+        print("       python cire_engine.py --smoke")
+        return 0
+    result = resolve(" ".join(args))
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
