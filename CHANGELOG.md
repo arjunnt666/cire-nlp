@@ -1,12 +1,13 @@
 # Changelog
 
-## 0.1.1 — unreleased
+## 0.1.2
 
-- restate scope: small pipelines, not full transformer stacks
-- note tokenization remains intentionally simple
-- add pointer for when you should just use a real model host instead
+- STATUS.md
+
+## 0.1.1
+
+- scope boundaries docs
 
 ## 0.1.0
 
 - initial public skeleton
-- lightweight nlp surface without the usual dependency pile
