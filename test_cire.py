@@ -42,6 +42,16 @@ class CireTests(unittest.TestCase):
         self.assertEqual(data["topic"], "domain_b")
         self.assertEqual(data["intent"], "rules")
 
+    def test_follow_up_keeps_last_topic(self):
+        session = cire.CIRESession()
+        session.process("topic a")
+        self.assertEqual(session.last_topic, "domain_a")
+        response, end = session.process("rules")
+        self.assertFalse(end)
+        self.assertEqual(session.last_topic, "domain_a")
+        self.assertEqual(session.history[-1]["intent"], "rules")
+        self.assertIn("procedurally", response.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

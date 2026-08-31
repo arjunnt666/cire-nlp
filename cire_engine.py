@@ -496,6 +496,9 @@ def build_response(
 
     # ── Layer 1: Domain Topic Scorer ──────────────────────────────────────
     topic = detect_topic(text, last_topic=last_topic)
+    if topic is None and last_topic:
+        topic = last_topic
+
 
     # ── Layer 2: Intent Stratifier ────────────────────────────────────────
     intent = detect_intent(text)
